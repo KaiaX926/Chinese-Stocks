@@ -1,0 +1,80 @@
+# -*- coding:utf-8 -*-
+import traceback
+from dao import wit_oracle
+from config import config as conf
+from utils.Eastmoney_request import get_overview
+import time
+import datetime
+
+
+def save_db_inout(result_dict, batch_date):
+    with wit_oracle.sql_manager() as sql_m:
+        for result in result_dict.items():
+            if len(result[1]) == 0: continue
+            print(result[1])
+            rows=result[1]
+            #print(type(result[1]))
+            print(rows)
+            #print(type(rows))
+            rows.append(datetime.datetime.strftime(datetime.datetime.now(),'%Y-%m-%d  %H:%M:%S'))
+            rows.append(batch_date)
+            print(rows)
+            result_v = tuple(rows)
+            field_v = ",".join(["{}".format(i) for i in rows])
+            print(field_v)
+            print(result_v)
+            sql = "INSERT INTO {table_name}({field_v}) VALUES({v})".format(
+                table_name='STOCK_INOUT',
+                field_v='STCode,PRICE,PRICE_CHANGE,STNAME,HOLDER_NAME,UP_DOWN,Change_NUM,Change_per_flow,Change_per_all,market,nowhold,nowhold_per_all,nowhold_flow,nowhold_per_flow,startday,endday,ann_day,create_datetime,batch_date',
+                v='?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?'
+            )
+            sql_m.conn.execute(sql, result_v)
+            print('大股东增减持数据入库完成，无异常')
+
+def save_db_overview(result_dict,batch_date):
+    long = result_dict.count('{')
+    with wit_oracle.sql_manager() as sql_m:
+        for i in range(long):
+            result_V=''
+            field_V=''
+            a = str(result_dict[result_dict.find('{'):result_dict.find('}') + 1])
+            result_dict = result_dict.replace(str(a + ','), '')
+            a=eval(a)
+            #if batch_date+'T'+'00:00:00' in a.values():#仅关注具有时效性的数据
+                #print(a)
+            if len(result_dict) == 0:
+                break
+            for result_k, result_v in a.items():
+                #print(a.items())
+                if len(str(result_v)) == 0:
+                    continue
+                else:
+                    result_V = result_V+str(result_v)+','
+                    field_V = field_V+result_k+','
+            result_V=result_V.replace('T',' ')
+            result_V=result_V+datetime.datetime.strftime(datetime.datetime.now(),'%Y-%m-%d  %H:%M:%S')+','+batch_date
+            field_V=field_V+'CREATE_DATETIME'+','+'batch_date'
+            #print(i)
+            #print('*'*20)
+            sql = "INSERT INTO {table_name}({field_v}) VALUES({v}) ".format(
+                table_name='STOCK_OVERVIEW',
+                field_v=field_V,
+                v='?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?')
+            #print(sql)
+            #print(result_V)
+            result_V=tuple(result_V.split(","))
+            sql_m.conn.execute(sql, result_V)
+    print('股东数量变动数据入库完成，无异常')
+
+
+
+
+if __name__ == '__main__':
+    start_time = time.time()
+    batch_date = '2021-09-10'
+    #batch_date = datetime.datetime.strftime(datetime.datetime.now(),'%Y-%m-%d  %H:%M:%S')[0:10]
+    #rawl_by_date(batch_date)
+    #save_db_inout(crawl_by_date(batch_date), batch_date)
+    save_db_overview(get_overview(),batch_date)
+    end_time = time.time()
+    print("time :", end_time - start_time)
