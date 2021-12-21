@@ -1,1 +1,5 @@
-
+Eastmoney_Request --> Data Crawler 🐛
+Eastmoney_Output  --> Data Storage 🏢
+Stock_ETL         --> Analyst Sample 🕹
+Stock_Report      --> Readable Excel Output ⚒
+Stock_Sender      --> Automatic Sender in Wechat 🚅
