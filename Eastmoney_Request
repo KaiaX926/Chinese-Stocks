@@ -1,0 +1,68 @@
+# -*- coding:utf-8 -*-
+import re
+import sys
+import datetime
+sys.path.append("..")
+import requests
+
+from lxml import etree
+from config import config as conf
+
+
+
+def get_inout(self):
+    favicon_url = "http://datainterface3.eastmoney.com/EM_DataCenter_V3/api/GDZC/GetGDZC?js=datatable4384281&pageSize=50&pageNum=1&tkn=eastmoney&cfg=gdzc&secucode=&fx=2&sharehdname=&sortFields=BDJZ&sortDirec=1&startDate=&endDate=&p=1"
+    s = (requests.get(favicon_url)).text
+    s = s[s.find('"Data":') + 8:s.rfind('"]}') + 3]
+    results = eval(s)
+    items = {}
+    #data1 = pd.DataFrame() 
+    j = 1
+    for i in results["Data"]:
+        i = i.split('|')
+        i_18 = i[18]
+        if datetime.datetime.strftime(datetime.datetime.strptime(i_18, '%Y-%m-%d'),
+                                      '%Y-%m-%d') == datetime.datetime.strftime(
+            datetime.datetime.strptime(batch_date, '%Y-%m-%d'), '%Y-%m-%d'):
+            # i = pd.DataFrame(i)
+            i = i[2:19]
+            # data1 = data1.append(i.T, ignore_index=True)
+            name = 'x' * j
+            N = {name: i}
+            items.update(N)
+            j += 1
+    # print(data1)
+    # data1=data1.drop(0,axis=1)
+    # data1=data1.drop(1,axis=1)
+    # print(items["FieldName"])
+    # data1.columns = ['代码', '最新价', '涨跌幅', '名称', '股东名称', '增/减', '变动数量（万股）', '持股变动占流通比例', '持股变动占总股本比例', '变动市场',
+    # '变动后持股总数（万股）', '变动后持股占总股本比例', '变动后持流通股数（万股）', '变动后持股占流通股比例', '变动开始日期', '变动截至日期', '公告日']
+    print('大股东增减持数据扒取完成，无异常')
+    return items
+
+
+def get_overview():#股东数量与最新价格
+    p=1
+    A=''
+    for p in range(1,200):
+        favicon_url ="http://dcfm.eastmoney.com/em_mutisvcexpandinterface/api/js/get?callback=jQuery1123032002698556281817_1609202136318&st=NoticeDate&sr=-1&ps=50&p="+str(p)+"&type=HOLDERNUMLATEST&sty=list&js=%7Bpages%3A(tp)%2Cdata%3A(x)%7D&token=70f12f2f4f091e459a279469fe49eca5&filter=(HolderNumChangeRate%3D)(RangeChangeRate%3D)"
+        response = (requests.get(favicon_url)).text
+        r=response[response.find('data:[') + 6:response.rfind(']})')]
+        A = A + r+ ','
+        if response[response.rfind(']})')-1]=='[':
+            break
+        #print(response)
+        p+=1
+        #print(A)
+        print(p)
+    A=A[:-2]
+    print('股东数量变动数据扒取完成，无异常')
+    return A
+
+
+
+if __name__ == '__main__':
+    #s1 = get_inout()
+    s2 = get_overview()
+    print(s2)
+
