@@ -1,0 +1,56 @@
+import time
+from dao import wit_oracle
+from utils.Eastmoney_request import get_overview
+from utils.Eastmoney_output import save_db_overview
+from utils.STOCK_etl import ETL_overview
+from wxpy import *
+from apscheduler.schedulers.blocking import BlockingScheduler
+
+
+import datetime
+import utils.STOCK_report
+
+def main_overview():
+    #batch_date='2020-12-29'
+    batch_date=datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d  %H:%M:%S')[0:10]
+    print('当前日期%s'%(batch_date))
+    date=batch_date[8:10]
+    save_db_overview(get_overview(), batch_date)
+    #print('股东数量变动数据入库完成，无异常')
+    ETL_overview(batch_date)
+    #print('股东数量变动daily report表已生成，无异常')
+    utils.STOCK_report.fetch_report(r'/Users/rong/Desktop/STOCK',batch_date)
+    txt='/Users/rong/Desktop/STOCK/STOCK_DAILY_REPORT_%s.txt'%(batch_date)
+    xlsx='/Users/rong/Desktop/STOCK/STOCK_DAILY_REPORT_%s.xlsx'%(batch_date)
+    utils.STOCK_report.txt_to_xlsx(txt,xlsx)
+    #print("股东数量变动excel报告已生成，无异常,请发送")
+    if date=='01' or date=='10' or date=='20':
+        with wit_oracle.sql_manager() as sql_m:
+            delete_sql = "delete from STOCK_OVERVIEW"
+            sql_m.moddify(delete_sql)
+    print('日期校验完成')
+
+def send_file():
+    bot = Bot(cache_path=True)
+    #batch_date='2020-12-29'
+    batch_date=datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d  %H:%M:%S')[0:10]
+    fileName = '/Users/rong/Desktop/STOCK/STOCK_DAILY_REPORT_%s.xlsx' %(batch_date)
+    userID='徐夸夸'
+    my_group = bot.groups().search(userID)[0]
+    my_group.send_file(fileName)
+    text="股东数量变动excel报告已发送，更新日期%s，无异常，请查收"%(batch_date)
+    my_group.send(text)
+    print(text)
+
+
+if __name__ == '__main__':
+    main_overview()
+    # bot = Bot(cache_path=True)
+    # scheduler = BlockingScheduler()
+    # hour_run= 7
+    # minute_run = 50
+    # hour_sent = 8
+    # minute_sent = 0
+    # scheduler.add_job(main_overview, 'cron', hour=hour_run, minute=minute_run)#, day_of_week='1-5' 放在hour前面
+    # scheduler.add_job(send_file, 'cron', hour=hour_sent, minute=minute_sent)
+    # scheduler.start()
