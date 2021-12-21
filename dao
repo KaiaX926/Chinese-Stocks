@@ -1,0 +1,76 @@
+# -*- coding:utf-8 -*-
+import sys
+import os
+
+os.environ['NLS_LANG'] = 'SIMPLIFIED CHINESE_CHINA.UTF8'
+sys.path.append("..")
+import time
+import cx_Oracle
+import sqlite3
+
+
+from config import config as conf
+
+
+class sql_manager(object):
+
+    # 初始化实例方法 Initialize the instance
+    def __init__(self):
+        self.conn = None
+        self.cursor = None
+        self.connect()
+
+
+    # 连接数据库 Connect to Database
+    def connect(self):
+        self.conn = sqlite3.connect('/Users/rong/Library/DBeaverData/workspace6/.metadata/sample-database-sqlite-1/Chinook.db')
+        self.cursor = self.conn.cursor()
+
+    # 查询多条数据sql是sql语句，args是sql语句的参数 Query multiple sql statements
+    def get_list(self, sql, args=None):
+        if args is None:
+            self.cursor.execute(sql)
+        else:
+            self.cursor.execute(sql, args)
+        result = self.cursor.fetchall()
+        return result
+
+    # 执行单条SQL语句 Execute a single SQL statement
+    def moddify(self, sql, args=None):
+        if args is None:
+            self.conn.execute(sql)
+        else:
+            self.cursor.execute(sql, args)
+
+    def insert_overwrite(self, table, sql, drop_table=False):
+        if drop_table:
+            self.moddify("drop table if exists {}".format(table))
+        else:
+            self.moddify("truncate table {}".format(table))
+        self.moddify(sql)
+
+    def executemany(self, sql, args):
+        self.cursor.executemany(sql, args)
+
+    def exce_pkg_proc(self, proc_name):
+        self.cursor.callproc(proc_name)
+
+    # 关闭数据库cursor和连接 Close connection
+    def close(self):
+        self.cursor.close()
+        self.conn.commit()
+        self.conn.close()
+
+    # 进入with语句自动执行 
+    def __enter__(self):
+        return self
+
+    # 退出with语句块自动执行
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+
+if __name__ == '__main__':
+    start_time = time.time()
+    end_time = time.time()
+    print("time :", end_time - start_time)
