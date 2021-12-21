@@ -1,0 +1,73 @@
+import time
+from dao import wit_oracle
+import openpyxl
+import codecs
+import xlwt
+import datetime
+import sqlite3 as sqlite
+import numpy as np
+import os
+
+def report_file_data(save_path,source_data,date_time):
+    f=open('%s/STOCK_DAILY_REPORT_%s.txt'%(save_path,date_time),'w')
+    #f.write('SecurityCode,SecurityName,LatestPrice,PriceChangeRate,HolderNum,PreviousHolderNum,HolderNumChange,HolderNumChangeRate,RangeChangeRate,EndDate,PreviousEndDate,HolderAvgCapitalisation,HolderAvgStockQuantity,TotalCapitalisation,CapitalStock,NoticeDate,ClosePrice,create_datetime,batch_date' + '\n')
+    f.write('Compare_Yesterday,SecurityCode,SecurityName,LatestPrice,PriceChangeRate,HolderNum,PreviousHolderNum,HolderNumChange,HolderNumChangeRate,RangeChangeRate,EndDate,PreviousEndDate,HolderAvgCapitalisation,HolderAvgStockQuantity,TotalCapitalisation,CapitalStock,NoticeDate,ClosePrice,create_datetime,batch_date' + '\n')
+    for data in source_data:
+        line=str(data).replace("(","").replace(")","").replace('None','')
+        f.write(line+'\n')
+    f.close()
+
+def fetch_report(file_save_path,batch_date):
+    with wit_oracle.sql_manager() as sql_m:
+        #sql_m.cursor.execute("select * from STOCK_DAILY_CHANGE where batch_date='{batch_date}' order by HolderNumChangeRate asc".format(batch_date=batch_date))  # 每一次都让游标返回user表的开头
+        sql_m.cursor.execute("select * from STOCK_DAILY_CHANGE_COMP order by HolderNumChangeRate asc")  # 每一次都让游标返回user表的开头
+        report = sql_m.cursor.fetchall()
+        report_file_data(file_save_path, report, batch_date)
+
+
+
+def txt_to_xlsx(filename,outfile):
+    fr=codecs.open(filename,'r')
+    wb=openpyxl.Workbook()
+    ws=wb.active
+    #ws=wb.create_sheet()
+    #sheet：工作表，一个workbook有多个，表名识别如“sheet1”,“sheet2”等。
+    #ws.title='Sheet1'
+    row=0
+    for line in fr:
+        row+=1
+        #line=line.strip() 用于移除字符串头尾指定的字符（默认为空格或换行符）或字符序列。
+        line = line.replace("'",'')
+        line = line.replace(" ", '')
+        line=line.split(',')
+        col=0
+        for j in range(len(line)):
+          col+=1
+          ws.cell(column=col,row=row,value=line[j])
+    wb.save(outfile)
+    print("股东数量变动excel报告已生成，无异常")
+#读取xlsx内容
+# def read_xlsx(filename):
+#     wb=openpyxl.load_workbook(filename)
+#     ws=wb.get_sheet_by_name('Sheet1')
+#     for row in ws.rows:
+#         for cell in row:
+#             print(cell.value)
+#     for col in ws.columns:
+#         for cell in col:
+#             print(cell.value)
+
+
+
+if __name__ == '__main__':
+    start_time = time.time()
+    batch_date='2021-01-06'
+    #batch_date = datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d  %H:%M:%S')[0:10]
+    #excelname='STOCK_DAILY_REPORT_%s'%(batch_date)
+    fetch_report(r'/Users/didi/Desktop/STOCK',batch_date)
+    txt='/Users/didi/Desktop/STOCK/STOCK_DAILY_REPORT_%s.txt'%(batch_date)
+    xlsx='/Users/didi/Desktop/STOCK/STOCK_DAILY_REPORT_%s.xlsx'%(batch_date)
+    txt_to_xlsx(txt,xlsx)
+    #read_report_excel(r'C:\Users\TinaR\Desktop\STOCK',batch_date)
+    end_time = time.time()
+    print("time :", end_time - start_time)
