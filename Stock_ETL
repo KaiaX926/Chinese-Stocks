@@ -1,0 +1,60 @@
+# -*- coding:utf-8 -*-
+import sys
+import time
+from dao import wit_oracle
+import datetime
+
+
+def ETL_overview(batch_date):
+    with wit_oracle.sql_manager() as sql_m:
+        STOCK_OVERVIEW_ETL="""
+                           delete from STOCK_OVERVIEW where STOCK_OVERVIEW.rowid not in (select MAX(STOCK_OVERVIEW.rowid) from STOCK_OVERVIEW 
+                           where batch_date='{batch_date}'
+                           group by SECURITYcode,batch_date)
+                           """
+        sql_m.moddify(STOCK_OVERVIEW_ETL.format(batch_date=batch_date))
+        delete_sql = "delete from {table} where batch_date<CAST(date('{batch_date}','-1 day') as text)"
+        sql_m.moddify(delete_sql.format(table="STOCK_DAILY_CHANGE",batch_date=batch_date))
+        STOCK_DAILY_CHANGE = """insert into STOCK_DAILY_CHANGE
+                                select * from STOCK_OVERVIEW
+                                where (batch_date='{batch_date}' or batch_date=CAST(date('{batch_date}','-1 day') as text))
+                                and HolderNumChange<=0
+                                order by HolderNumChangeRate asc
+                                limit 500""".format(batch_date=str(batch_date))
+        sql_m.moddify(STOCK_DAILY_CHANGE)
+        delete_sql_comp = "delete from {table}"
+        sql_m.moddify(delete_sql_comp.format(table="STOCK_DAILY_CHANGE_COMP"))
+        STOCK_DAILY_CHANGE_COMP = """
+                                insert into STOCK_DAILY_CHANGE_comp
+                                select *
+                                from(
+                                select 
+                                case when t.holdernum<>y.holdernum or (substr(t.EndDate,1,10)='{batch_date}' or substr(t.NoticeDate,1,10)='{batch_date}') then 'Nearly Update' else 'N' end  Compare_Yesterday,
+                                t.*
+                                from(select * from STOCK_DAILY_CHANGE 
+                                     where batch_date='{batch_date}'
+                                     order by HolderNumChangeRate asc
+                                     )t
+                                left join
+                                (select * from STOCK_DAILY_CHANGE 
+                                where batch_date=CAST(date('{batch_date}','-1 day') as text)
+                                )y
+                                on t.securitycode=y.securitycode
+                                order by HolderNumChangeRate asc
+                                )
+                                order by Compare_Yesterday desc
+                                """.format(batch_date=str(batch_date))
+        sql_m.moddify(STOCK_DAILY_CHANGE_COMP)
+    print('股东数量变动daily report表已生成，无异常')
+
+
+
+if __name__ == '__main__':
+    start_time = time.time()
+    batch_date = '2021-01-05'
+    #batch_date = datetime.datetime.strftime(datetime.datetime.now(),'%Y-%m-%d  %H:%M:%S')[0:10]
+    #sys.argv[1] if len(sys.argv) > 1 else time.strftime("%Y-%m-%d", time.localtime())
+    #save_db_overview(overview(), batch_date)
+    ETL_overview(batch_date)
+    end_time = time.time()
+    print("time :", end_time - start_time)
