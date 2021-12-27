@@ -1,2 +1,4 @@
 # Chinese-Stocks
-Crawler, Analyst and Sender
+Crawler from Eastmoney website.
+Save data into SQL database.
+Send analyzed result to user on Wechat daily.
